@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remittance Receipt Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+        }
+        .receipt-container {
+            display: none;
+            margin-top: 30px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: white;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            background-color: #f8f9fa;
+            padding: 8px 15px;
+            font-weight: bold;
+            border-left: 4px solid #3498db;
+            margin-bottom: 10px;
+        }
+        .detail-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+        .detail-key {
+            font-weight: bold;
+            width: 200px;
+            color: #555;
+        }
+        .detail-value {
+            flex: 1;
+            white-space: pre-wrap;
+        }
+        .total-amount {
+            font-weight: bold;
+            font-size: 18px;
+            text-align: right;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #fileInput {
+            display: none;
+        }
+        .upload-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .upload-label:hover {
+            background-color: #2980b9;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+            color: #555;
+        }
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="text-align: center;">
+            <h1 style="display: inline-block; font-family: Arial, Helvetica, sans-serif;">
+                <img src="https://cdn-icons-png.flaticon.com/512/1034/1034551.png" 
+                     alt="Global Remittance" 
+                     style="width: 40px; height: 40px; margin-right: 8px; border: 2px solid #000; border-radius: 4px;">
+                Remittance Receipt Extractor
+            </h1>
+        </div>
+
+        <div class="upload-section">
+            <input type="file" id="fileInput" accept=".pdf">
+            <label for="fileInput" class="upload-label">Choose PDF File</label>
+            <p id="fileName"></p>
+            <div id="loading">Processing...</div>
+            <div id="countryError" class="error-message">Receipt can only be downloaded for valid PDF files.</div>
+        </div>
+        
+        <div class="receipt-container" id="receiptContainer">
+            <div class="section">
+                <div class="section-title">Receipt Metadata</div>
+                <div class="detail-row">
+                    <div class="detail-key">Transaction No:</div>
+                    <div class="detail-value" id="txnNo"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Date:</div>
+                    <div class="detail-value" id="date"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Transaction Details</div>
+                <div class="detail-row">
+                    <div class="detail-key">Payment Channel:</div>
+                    <div class="detail-value" id="paymentChannel"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Pin:</div>
+                    <div class="detail-value" id="pin"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Sender Details</div>
+                <div class="detail-row">
+                    <div class="detail-key">Customer Id:</div>
+                    <div class="detail-value" id="customerId"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Name:</div>
+                    <div class="detail-value" id="senderName"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Address:</div>
+                    <div class="detail-value" id="senderAddress"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Passport:</div>
+                    <div class="detail-value" id="nationalId"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Nationality:</div>
+                    <div class="detail-value" id="nationality"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Profession:</div>
+                    <div class="detail-value" id="profession"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Mobile No:</div>
+                    <div class="detail-value" id="senderMobile"></div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Beneficiary Details</div>
+                <div class="detail-row">
+                    <div class="detail-key">Name:</div>
+                    <div class="detail-value" id="beneficiaryName"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Bank Name:</div>
+                    <div class="detail-value" id="bankName"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Account No:</div>
+                    <div class="detail-value" id="accountNo"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">IFSC/Bank Code:</div>
+                    <div class="detail-value" id="ifscCode"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Mobile No:</div>
+                    <div class="detail-value" id="beneficiaryMobile"></div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Payment Details</div>
+                <div class="detail-row">
+                    <div class="detail-key">Payout Country:</div>
+                    <div class="detail-value" id="payoutCountry"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Source:</div>
+                    <div class="detail-value" id="source"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Purpose:</div>
+                    <div class="detail-value" id="purpose"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Payout Amount:</div>
+                    <div class="detail-value" id="payoutAmount"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Exchange Rate:</div>
+                    <div class="detail-value" id="exchangeRate"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Pay in Amount:</div>
+                    <div class="detail-value" id="payInAmount"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-key">Service Charge:</div>
+                    <div class="detail-value" id="serviceCharge"></div>
+                </div>
+                <div class="total-amount" id="totalAmount"></div>
+            </div>
+            
+            <div class="button-container">
+                <button id="downloadBtn" disabled title="Upload a valid PDF to enable download">Get Receipt</button>
+                <button id="resetBtn" style="background-color: #e74c3c; margin-left: 10px;">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+        
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileName');
+        const receiptContainer = document.getElementById('receiptContainer');
+        const loadingIndicator = document.getElementById('loading');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const countryError = document.getElementById('countryError');
+        
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            fileNameDisplay.textContent = `Selected file: ${file.name}`;
+            loadingIndicator.style.display = 'block';
+            countryError.style.display = 'none';
+            
+            try {
+                const extractedData = await extractDataFromPDF(file);
+                populateReceipt(extractedData);
+                receiptContainer.style.display = 'block';
+                
+                const payoutCountry = extractedData.payoutCountry ? extractedData.payoutCountry.trim().toLowerCase() : '';
+                if (payoutCountry && payoutCountry !== 'n/a') {
+                    downloadBtn.disabled = false;
+                    downloadBtn.title = 'Download Receipt';
+                    downloadBtn.style.backgroundColor = '#3498db';
+                } else {
+                    downloadBtn.disabled = true;
+                    downloadBtn.title = 'Receipt can only be downloaded for a valid payout country';
+                    downloadBtn.style.backgroundColor = '#95a5a6';
+                    countryError.style.display = 'block';
+                    countryError.textContent = 'Receipt can only be downloaded for a valid payout country';
+                }
+            } catch (error) {
+                console.error('Error processing PDF:', error);
+                alert('Error processing PDF. Please ensure it is a valid PDF.');
+                downloadBtn.disabled = true;
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            fileNameDisplay.textContent = '';
+            receiptContainer.style.display = 'none';
+            downloadBtn.disabled = true;
+            downloadBtn.style.backgroundColor = '#3498db';
+            downloadBtn.title = 'Upload a valid PDF to enable download';
+            document.querySelectorAll('.detail-value').forEach(el => el.textContent = '');
+            document.getElementById('totalAmount').textContent = '';
+            countryError.style.display = 'none';
+        });
+        
+        async function extractDataFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            const page = await pdf.getPage(1);
+            const textContent = await page.getTextContent();
+            const textItems = textContent.items.map(item => item.str);
+            
+            let text = textItems.join('\n');
+            text = text.replace(/\s*:\s*/g, ': ').replace(/\n\s+/g, '\n');
+            
+            console.log('Full extracted text:', text);
+            
+            // Extract Receipt/Transaction Number - Enhanced patterns
+            let txnNo = 'N/A';
+            const receiptNoMatch = text.match(/Receipt\s*No\.?\s*:?\s*(\d+)/i);
+            const txnNoMatch = text.match(/Txn\s*No\.?\s*:?\s*(\d+)/i);
+            const transactionNoMatch = text.match(/Transaction\s*No\.?\s*:?\s*(\d+)/i);
+            const refNoMatch = text.match(/Ref(?:erence)?\s*No\.?\s*:?\s*([A-Za-z0-9]+)/i);
+            
+            if (receiptNoMatch) {
+                txnNo = receiptNoMatch[1].trim();
+            } else if (txnNoMatch) {
+                txnNo = txnNoMatch[1].trim();
+            } else if (transactionNoMatch) {
+                txnNo = transactionNoMatch[1].trim();
+            } else if (refNoMatch) {
+                txnNo = refNoMatch[1].trim();
+            }
+            
+            console.log('Transaction/Receipt Number:', txnNo);
+            
+            // Extract date
+            const dateMatch = text.match(/Date\s*:?\s*(\d{2}-\d{2}-\d{4})/i);
+            
+            // Extract payment channel
+            const paymentChannelMatch = text.match(/Payment\s*Channel\s*:?\s*([^\n]+)/i);
+            
+            // Extract PIN
+            const pinMatch = text.match(/(?:^|\n)\s*Pin\s*:+\s*([A-Za-z0-9]+)/i);
+            
+            // Extract Sender Details
+            const senderNameMatch = text.match(/Sender\s*Details[\s\S]*?Name\s*:?\s*([^\n]+)/i);
+            
+            // Extract address - handle multi-line format
+            let senderAddress = 'N/A';
+            const addressMatch = text.match(/Address\s*:?\s*([\s\S]*?)(?=National\s*ID|Nationality|Profession|Beneficiary)/i);
+            if (addressMatch) {
+                senderAddress = addressMatch[1].trim().replace(/\n/g, ', ').replace(/\s+/g, ' ');
+            }
+            
+            const nationalIdMatch = text.match(/National\s*ID\s*:?\s*([^\n]+)/i);
+            const nationalityMatch = text.match(/Nationality\s*:?\s*([^\n]+)/i);
+            const professionMatch = text.match(/Profession\s*:?\s*([^\n]+)/i);
+            const senderMobileMatch = text.match(/Sender\s*Details[\s\S]*?Mobile\s*No\s*:?\s*(\d+)/i);
+            
+            // Extract Beneficiary Details
+            const beneficiaryNameMatch = text.match(/Beneficiary\s*Details[\s\S]*?Name\s*:?\s*([^\n]+)/i);
+            const bankNameMatch = text.match(/Bank\s*Name\s*:?\s*([^\n]+)/i);
+            const accountNoMatch = text.match(/Account\s*No\s*:?\s*([^\n]+)/i);
+            const ifscCodeMatch = text.match(/IFSC\/Bank\s*Code\s*:?\s*([^\n]+)/i);
+            const beneficiaryMobileMatch = text.match(/Beneficiary\s*Details[\s\S]*?Mobile\s*No\s*:?\s*(\d*)/i);
+            
+            // Extract Payment Details
+            const payoutCountryMatch = text.match(/Payout\s*Country\s*:?\s*([^\n]+)/i);
+            const sourceMatch = text.match(/Source\s*:?\s*([^\n]+)/i);
+            const purposeMatch = text.match(/Purpose\s*:?\s*([^\n]+)/i);
+            
+            // Extract amounts with currency
+            const payoutAmountMatch = text.match(/Payout\s*Amount\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
+            const exchangeRateMatch = text.match(/Exchange\s*Rate\s*:?\s*([\d.]+)\s*([A-Z]{3})/i);
+            const payInAmountMatch = text.match(/Pay\s*In\s*Amount\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
+            const serviceChargeMatch = text.match(/Service\s*Charge\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
+            const totalAmountMatch = text.match(/Total\s*Amount\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
+            
+            const extractedData = {
+                txnNo: txnNo,
+                date: dateMatch ? dateMatch[1].trim() : 'N/A',
+                paymentChannel: paymentChannelMatch ? paymentChannelMatch[1].trim() : 'N/A',
+                pin: pinMatch ? pinMatch[1].trim() : 'N/A',
+                
+                customerId: 'N/A', // Not present in new template
+                senderName: senderNameMatch ? senderNameMatch[1].trim() : 'N/A',
+                senderAddress: senderAddress,
+                senderAddressRaw: senderAddress,
+                nationalId: nationalIdMatch ? nationalIdMatch[1].trim() : 'N/A',
+                nationality: nationalityMatch ? nationalityMatch[1].trim() : 'N/A',
+                profession: professionMatch ? professionMatch[1].trim() : 'N/A',
+                senderMobile: senderMobileMatch ? senderMobileMatch[1].trim() : 'N/A',
+                
+                beneficiaryName: beneficiaryNameMatch ? beneficiaryNameMatch[1].trim() : 'N/A',
+                bankName: bankNameMatch ? bankNameMatch[1].trim() : 'N/A',
+                accountNo: accountNoMatch ? accountNoMatch[1].trim() : 'N/A',
+                ifscCode: ifscCodeMatch ? ifscCodeMatch[1].trim() : 'N/A',
+                routingNumber: 'N/A',
+                branchName: 'N/A',
+                beneficiaryMobile: beneficiaryMobileMatch && beneficiaryMobileMatch[1] ? beneficiaryMobileMatch[1].trim() : 'N/A',
+                
+                payoutCountry: payoutCountryMatch ? payoutCountryMatch[1].trim() : 'N/A',
+                source: sourceMatch ? sourceMatch[1].trim() : 'N/A',
+                purpose: purposeMatch ? purposeMatch[1].trim() : 'N/A',
+                payoutAmount: payoutAmountMatch ? `${payoutAmountMatch[1].trim()} ${payoutAmountMatch[2]}` : 'N/A',
+                exchangeRate: exchangeRateMatch ? `${exchangeRateMatch[1].trim()} ${exchangeRateMatch[2]}` : 'N/A',
+                payInAmount: payInAmountMatch ? `${payInAmountMatch[1].trim()} ${payInAmountMatch[2]}` : 'N/A',
+                serviceCharge: serviceChargeMatch ? `${serviceChargeMatch[1].trim()} ${serviceChargeMatch[2]}` : 'N/A',
+                totalAmount: totalAmountMatch ? `${totalAmountMatch[1].trim()} ${totalAmountMatch[2]}` : 'N/A'
+            };
+            
+            console.log('Extracted Data:', extractedData);
+            return extractedData;
+        }
+        
+        function populateReceipt(data) {
+            console.log('Data passed to UI:', data);
+            
+            document.getElementById('txnNo').textContent = data.txnNo || 'N/A';
+            document.getElementById('date').textContent = data.date || 'N/A';
+            document.getElementById('paymentChannel').textContent = data.paymentChannel || 'N/A';
+            document.getElementById('pin').textContent = data.pin || 'N/A';
+            document.getElementById('customerId').textContent = data.customerId || 'N/A';
+            document.getElementById('senderName').textContent = data.senderName || 'N/A';
+            document.getElementById('senderAddress').innerHTML = (data.senderAddressRaw || 'N/A').replace(/,/g, '<br>');
+            document.getElementById('nationalId').textContent = data.nationalId || 'N/A';
+            document.getElementById('nationality').textContent = data.nationality || 'N/A';
+            document.getElementById('profession').textContent = data.profession || 'N/A';
+            document.getElementById('senderMobile').textContent = data.senderMobile || 'N/A';
+            
+            document.getElementById('beneficiaryName').textContent = data.beneficiaryName || 'N/A';
+            document.getElementById('bankName').textContent = data.bankName || 'N/A';
+            document.getElementById('accountNo').textContent = data.accountNo || 'N/A';
+            document.getElementById('ifscCode').textContent = data.ifscCode || 'N/A';
+            document.getElementById('beneficiaryMobile').textContent = data.beneficiaryMobile || 'N/A';
+            
+            document.getElementById('payoutCountry').textContent = data.payoutCountry || 'N/A';
+            document.getElementById('source').textContent = data.source || 'N/A';
+            document.getElementById('purpose').textContent = data.purpose || 'N/A';
+            document.getElementById('payoutAmount').textContent = data.payoutAmount || 'N/A';
+            document.getElementById('exchangeRate').textContent = data.exchangeRate || 'N/A';
+            document.getElementById('payInAmount').textContent = data.payInAmount || 'N/A';
+            document.getElementById('serviceCharge').textContent = data.serviceCharge || 'N/A';
+            document.getElementById('totalAmount').textContent = `Total Amount: ${data.totalAmount || 'N/A'}`;
+            
+            document.getElementById('downloadBtn').onclick = () => downloadReceipt(data);
+        }
+        
+        function downloadReceipt(data) {
+            const amountMatch = data.payoutAmount.match(/([\d,]+\.?\d*)/);
+            const amount = amountMatch ? amountMatch[1].replace(',', '') : '0';
+            
+            const receiptUrl = `receipt.html?` + new URLSearchParams({
+                bankName: data.bankName || 'N/A',
+                accountNo: data.accountNo || 'N/A',
+                beneficiaryName: data.beneficiaryName || 'N/A',
+                beneficiaryMobile: data.beneficiaryMobile || 'N/A',
+                senderName: data.senderName || 'N/A',
+                senderMobile: data.senderMobile || 'N/A', 
+                amount: amount,
+                payInAmount: data.payInAmount || 'N/A',
+                serviceCharge: data.serviceCharge || 'N/A',
+                totalAmount: data.totalAmount || 'N/A',
+                exchangeRate: data.exchangeRate || 'N/A',
+                ref: data.txnNo || 'N/A',
+                date: data.date || 'N/A',
+                routingNumber: data.routingNumber || 'N/A',
+                branchName: data.branchName || 'N/A',
+                payoutCountry: data.payoutCountry || 'N/A',
+                paymentChannel: data.paymentChannel || 'N/A',
+                pin: data.pin || 'N/A'
+            }).toString();
+            
+            window.open(receiptUrl, '_blank');
+        }
+    </script>
+</body>
+</html>
