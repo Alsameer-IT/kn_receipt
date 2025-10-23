@@ -164,7 +164,7 @@
             </div>
 
             <div class="receipt-row" id="ifscRow">
-                <div class="receipt-label">IFSC CODE</div>
+                <div class="receipt-label">ROUTING NO</div>
                 <div class="receipt-value" id="ifscCode">N/A</div>
             </div>
 
@@ -295,8 +295,7 @@
         const serviceChargeData = extractValue(params.get('serviceCharge') || 'N/A');
         const totalAmountData = extractValue(params.get('totalAmount') || 'N/A');
 
-        // FIXED: Read ifscCode from URL parameters correctly
-        const ifscCodeParam = params.get('ifscCode') || params.get('ifsc') || 'N/A';
+        const ifscCodeParam = params.get('ifscCode') || 'N/A';
         console.log('IFSC Code from URL:', ifscCodeParam);
 
         const data = {
@@ -387,7 +386,6 @@
             if (data.bankName === 'N/A') bankRow.classList.add('hidden');
             if (data.accountNumber === 'N/A') accountRow.classList.add('hidden');
             
-            // FIXED: Show IFSC code row only if it has a valid value
             if (data.ifscCode === 'N/A' || !data.ifscCode) {
                 ifscRow.classList.add('hidden');
             }
@@ -411,7 +409,6 @@
             if (data.bankName === 'N/A') bankRow.classList.add('hidden');
             if (data.accountNumber === 'N/A') accountRow.classList.add('hidden');
             
-            // FIXED: Show IFSC code row only if it has a valid value
             if (data.ifscCode === 'N/A' || !data.ifscCode) {
                 ifscRow.classList.add('hidden');
             }
@@ -433,7 +430,6 @@
             if (data.bankName === 'N/A') bankRow.classList.add('hidden');
             if (data.accountNumber === 'N/A') accountRow.classList.add('hidden');
             
-            // FIXED: Show IFSC code row only if it has a valid value
             if (data.ifscCode === 'N/A' || !data.ifscCode) {
                 ifscRow.classList.add('hidden');
             }
