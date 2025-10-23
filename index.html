@@ -324,7 +324,7 @@
             
             console.log('Full extracted text:', text);
             
-            // Extract Receipt/Transaction Number
+            // Extract Receipt/Transaction Number - Enhanced patterns
             let txnNo = 'N/A';
             const receiptNoMatch = text.match(/Receipt\s*No\.?\s*:?\s*(\d+)/i);
             const txnNoMatch = text.match(/Txn\s*No\.?\s*:?\s*(\d+)/i);
@@ -371,38 +371,7 @@
             const beneficiaryNameMatch = text.match(/Beneficiary\s*Details[\s\S]*?Name\s*:?\s*([^\n]+)/i);
             const bankNameMatch = text.match(/Bank\s*Name\s*:?\s*([^\n]+)/i);
             const accountNoMatch = text.match(/Account\s*No\s*:?\s*([^\n]+)/i);
-            
-            // FIXED: Improved IFSC/Bank Code extraction
-            let ifscCode = 'N/A';
-            
-            // Try multiple patterns for IFSC code
-            const ifscPattern1 = text.match(/IFSC\/Bank\s*Code\s*:?\s*([A-Z0-9]{4,})\s*(?=\n|Mobile|Payout|Payment|$)/i);
-            const ifscPattern2 = text.match(/IFSC\s*Code\s*:?\s*([A-Z0-9]{4,})\s*(?=\n|Mobile|Payout|Payment|$)/i);
-            const ifscPattern3 = text.match(/Bank\s*Code\s*:?\s*([A-Z0-9]{4,})\s*(?=\n|Mobile|Payout|Payment|$)/i);
-            
-            // Check for empty value after colon
-            const ifscEmptyCheck = text.match(/IFSC\/Bank\s*Code\s*:?\s*\n/i);
-            
-            if (ifscPattern1 && ifscPattern1[1]) {
-                const value = ifscPattern1[1].trim();
-                // Ensure it's not a mobile number or country name
-                if (!/^\d+$/.test(value) && value.length >= 4 && value.length <= 15 && !['MALAYSIA', 'INDIA', 'SINGAPORE'].includes(value.toUpperCase())) {
-                    ifscCode = value;
-                }
-            } else if (ifscPattern2 && ifscPattern2[1]) {
-                const value = ifscPattern2[1].trim();
-                if (!/^\d+$/.test(value) && value.length >= 4 && value.length <= 15 && !['MALAYSIA', 'INDIA', 'SINGAPORE'].includes(value.toUpperCase())) {
-                    ifscCode = value;
-                }
-            } else if (ifscPattern3 && ifscPattern3[1]) {
-                const value = ifscPattern3[1].trim();
-                if (!/^\d+$/.test(value) && value.length >= 4 && value.length <= 15 && !['MALAYSIA', 'INDIA', 'SINGAPORE'].includes(value.toUpperCase())) {
-                    ifscCode = value;
-                }
-            }
-            
-            console.log('IFSC Code extracted:', ifscCode);
-            
+            const ifscCodeMatch = text.match(/IFSC\/Bank\s*Code\s*:?\s*([^\n]+)/i);
             const beneficiaryMobileMatch = text.match(/Beneficiary\s*Details[\s\S]*?Mobile\s*No\s*:?\s*(\d*)/i);
             
             // Extract Payment Details
@@ -423,7 +392,7 @@
                 paymentChannel: paymentChannelMatch ? paymentChannelMatch[1].trim() : 'N/A',
                 pin: pinMatch ? pinMatch[1].trim() : 'N/A',
                 
-                customerId: 'N/A',
+                customerId: 'N/A', // Not present in new template
                 senderName: senderNameMatch ? senderNameMatch[1].trim() : 'N/A',
                 senderAddress: senderAddress,
                 senderAddressRaw: senderAddress,
@@ -435,7 +404,7 @@
                 beneficiaryName: beneficiaryNameMatch ? beneficiaryNameMatch[1].trim() : 'N/A',
                 bankName: bankNameMatch ? bankNameMatch[1].trim() : 'N/A',
                 accountNo: accountNoMatch ? accountNoMatch[1].trim() : 'N/A',
-                ifscCode: ifscCode,
+                ifscCode: ifscCodeMatch ? ifscCodeMatch[1].trim() : 'N/A',
                 routingNumber: 'N/A',
                 branchName: 'N/A',
                 beneficiaryMobile: beneficiaryMobileMatch && beneficiaryMobileMatch[1] ? beneficiaryMobileMatch[1].trim() : 'N/A',
@@ -509,8 +478,7 @@
                 branchName: data.branchName || 'N/A',
                 payoutCountry: data.payoutCountry || 'N/A',
                 paymentChannel: data.paymentChannel || 'N/A',
-                pin: data.pin || 'N/A',
-                ifscCode: data.ifscCode || 'N/A'
+                pin: data.pin || 'N/A'
             }).toString();
             
             window.open(receiptUrl, '_blank');
