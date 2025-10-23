@@ -358,7 +358,7 @@
             const bankNameMatch = text.match(/Bank\s*Name\s*:?\s*([^\n]+)/i);
             const accountNoMatch = text.match(/Account\s*No\s*:?\s*([^\n]+)/i);
             
-            // IMPROVED IFSC extraction with duplicate removal
+            // IMPROVED IFSC extraction with duplicate removal and validation
             let ifscCode = 'N/A';
             
             // Extract entire IFSC line including potential duplicates
@@ -368,30 +368,39 @@
                 const ifscLine = ifscLineMatch[1].trim();
                 console.log('Raw IFSC line:', ifscLine);
                 
-                // Split by spaces and get unique values
-                const ifscParts = ifscLine.split(/\s+/).filter(part => {
-                    // Keep only alphanumeric codes between 4-15 characters
-                    return part.length >= 4 && 
-                           part.length <= 15 && 
-                           /^[A-Z0-9]+$/i.test(part) &&
-                           !['MALAYSIA', 'INDIA', 'SINGAPORE', 'MOBILE', 'PAYOUT'].includes(part.toUpperCase());
-                });
-                
-                // Get the first unique code (in case of duplicates)
-                if (ifscParts.length > 0) {
-                    ifscCode = ifscParts[0];
+                // Check if line is empty or contains only "Mobile" or other field names
+                if (ifscLine && !['MOBILE', 'PAYOUT', 'PAYMENT', 'NO', 'NO.', 'NO:'].includes(ifscLine.toUpperCase().split(/\s+/)[0])) {
+                    // Split by spaces and get unique values
+                    const ifscParts = ifscLine.split(/\s+/).filter(part => {
+                        // Keep only alphanumeric codes between 4-15 characters
+                        return part.length >= 4 && 
+                               part.length <= 15 && 
+                               /^[A-Z0-9]+$/i.test(part) &&
+                               !['MALAYSIA', 'INDIA', 'SINGAPORE', 'MOBILE', 'PAYOUT', 'PAYMENT', 'NO', 'NO.', 'NO:', 'COUNTRY'].includes(part.toUpperCase());
+                    });
+                    
+                    // Get the first unique code (in case of duplicates)
+                    if (ifscParts.length > 0) {
+                        ifscCode = ifscParts[0];
+                    }
                 }
             }
             
             // Fallback patterns if main pattern doesn't work
             if (ifscCode === 'N/A') {
-                const ifscPattern2 = text.match(/IFSC\s*Code\s*:?\s*([A-Z0-9]{4,15})/i);
-                const ifscPattern3 = text.match(/Bank\s*Code\s*:?\s*([A-Z0-9]{4,15})/i);
+                const ifscPattern2 = text.match(/IFSC\s*Code\s*:?\s*([A-Z0-9]{4,15})(?=\s|$|\n)/i);
+                const ifscPattern3 = text.match(/Bank\s*Code\s*:?\s*([A-Z0-9]{4,15})(?=\s|$|\n)/i);
                 
                 if (ifscPattern2 && ifscPattern2[1]) {
-                    ifscCode = ifscPattern2[1].trim();
+                    const value = ifscPattern2[1].trim();
+                    if (!['MOBILE', 'PAYOUT', 'PAYMENT'].includes(value.toUpperCase())) {
+                        ifscCode = value;
+                    }
                 } else if (ifscPattern3 && ifscPattern3[1]) {
-                    ifscCode = ifscPattern3[1].trim();
+                    const value = ifscPattern3[1].trim();
+                    if (!['MOBILE', 'PAYOUT', 'PAYMENT'].includes(value.toUpperCase())) {
+                        ifscCode = value;
+                    }
                 }
             }
             
