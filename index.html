@@ -119,13 +119,12 @@
     <div class="container">
         <div style="text-align: center;">
             <h1 style="display: inline-block; font-family: Arial, Helvetica, sans-serif;">
-                <img src="https://cdn-icons-png.flaticon.com/512/1034/1034551.png" 
-                     alt="Global Remittance" 
+                <img src="https://cdn-icons-png.flaticon.com/512/1034/1034551.png"
+                     alt="Global Remittance"
                      style="width: 40px; height: 40px; margin-right: 8px; border: 2px solid #000; border-radius: 4px;">
                 Remittance Receipt Extractor
             </h1>
         </div>
-
         <div class="upload-section">
             <input type="file" id="fileInput" accept=".pdf">
             <label for="fileInput" class="upload-label">Choose PDF File</label>
@@ -133,7 +132,7 @@
             <div id="loading">Processing...</div>
             <div id="countryError" class="error-message">Receipt can only be downloaded for valid PDF files.</div>
         </div>
-        
+       
         <div class="receipt-container" id="receiptContainer">
             <div class="section">
                 <div class="section-title">Receipt Metadata</div>
@@ -146,7 +145,6 @@
                     <div class="detail-value" id="date"></div>
                 </div>
             </div>
-
             <div class="section">
                 <div class="section-title">Transaction Details</div>
                 <div class="detail-row">
@@ -158,7 +156,6 @@
                     <div class="detail-value" id="pin"></div>
                 </div>
             </div>
-
             <div class="section">
                 <div class="section-title">Sender Details</div>
                 <div class="detail-row">
@@ -190,7 +187,7 @@
                     <div class="detail-value" id="senderMobile"></div>
                 </div>
             </div>
-            
+           
             <div class="section">
                 <div class="section-title">Beneficiary Details</div>
                 <div class="detail-row">
@@ -214,7 +211,7 @@
                     <div class="detail-value" id="beneficiaryMobile"></div>
                 </div>
             </div>
-            
+           
             <div class="section">
                 <div class="section-title">Payment Details</div>
                 <div class="detail-row">
@@ -247,17 +244,16 @@
                 </div>
                 <div class="total-amount" id="totalAmount"></div>
             </div>
-            
+           
             <div class="button-container">
                 <button id="downloadBtn" disabled title="Upload a valid PDF to enable download">Get Receipt</button>
                 <button id="resetBtn" style="background-color: #e74c3c; margin-left: 10px;">Reset</button>
             </div>
         </div>
     </div>
-
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
-        
+       
         const fileInput = document.getElementById('fileInput');
         const fileNameDisplay = document.getElementById('fileName');
         const receiptContainer = document.getElementById('receiptContainer');
@@ -265,20 +261,20 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const resetBtn = document.getElementById('resetBtn');
         const countryError = document.getElementById('countryError');
-        
+       
         fileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            
+           
             fileNameDisplay.textContent = `Selected file: ${file.name}`;
             loadingIndicator.style.display = 'block';
             countryError.style.display = 'none';
-            
+           
             try {
                 const extractedData = await extractDataFromPDF(file);
                 populateReceipt(extractedData);
                 receiptContainer.style.display = 'block';
-                
+               
                 const payoutCountry = extractedData.payoutCountry ? extractedData.payoutCountry.trim().toLowerCase() : '';
                 if (payoutCountry && payoutCountry !== 'n/a') {
                     downloadBtn.disabled = false;
@@ -299,7 +295,7 @@
                 loadingIndicator.style.display = 'none';
             }
         });
-        
+       
         resetBtn.addEventListener('click', () => {
             fileInput.value = '';
             fileNameDisplay.textContent = '';
@@ -311,26 +307,25 @@
             document.getElementById('totalAmount').textContent = '';
             countryError.style.display = 'none';
         });
-        
+       
         async function extractDataFromPDF(file) {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
             const page = await pdf.getPage(1);
             const textContent = await page.getTextContent();
             const textItems = textContent.items.map(item => item.str);
-            
+           
             let text = textItems.join('\n');
             text = text.replace(/\s*:\s*/g, ': ').replace(/\n\s+/g, '\n');
-            
+           
             console.log('Full extracted text:', text);
-            
-            // Extract Receipt/Transaction Number - Enhanced patterns
+           
             let txnNo = 'N/A';
             const receiptNoMatch = text.match(/Receipt\s*No\.?\s*:?\s*(\d+)/i);
             const txnNoMatch = text.match(/Txn\s*No\.?\s*:?\s*(\d+)/i);
             const transactionNoMatch = text.match(/Transaction\s*No\.?\s*:?\s*(\d+)/i);
             const refNoMatch = text.match(/Ref(?:erence)?\s*No\.?\s*:?\s*([A-Za-z0-9]+)/i);
-            
+           
             if (receiptNoMatch) {
                 txnNo = receiptNoMatch[1].trim();
             } else if (txnNoMatch) {
@@ -340,59 +335,86 @@
             } else if (refNoMatch) {
                 txnNo = refNoMatch[1].trim();
             }
-            
+           
             console.log('Transaction/Receipt Number:', txnNo);
-            
-            // Extract date
+           
             const dateMatch = text.match(/Date\s*:?\s*(\d{2}-\d{2}-\d{4})/i);
-            
-            // Extract payment channel
             const paymentChannelMatch = text.match(/Payment\s*Channel\s*:?\s*([^\n]+)/i);
-            
-            // Extract PIN
             const pinMatch = text.match(/(?:^|\n)\s*Pin\s*:+\s*([A-Za-z0-9]+)/i);
-            
-            // Extract Sender Details
             const senderNameMatch = text.match(/Sender\s*Details[\s\S]*?Name\s*:?\s*([^\n]+)/i);
-            
-            // Extract address - handle multi-line format
+           
             let senderAddress = 'N/A';
             const addressMatch = text.match(/Address\s*:?\s*([\s\S]*?)(?=National\s*ID|Nationality|Profession|Beneficiary)/i);
             if (addressMatch) {
                 senderAddress = addressMatch[1].trim().replace(/\n/g, ', ').replace(/\s+/g, ' ');
             }
-            
+           
             const nationalIdMatch = text.match(/National\s*ID\s*:?\s*([^\n]+)/i);
             const nationalityMatch = text.match(/Nationality\s*:?\s*([^\n]+)/i);
             const professionMatch = text.match(/Profession\s*:?\s*([^\n]+)/i);
             const senderMobileMatch = text.match(/Sender\s*Details[\s\S]*?Mobile\s*No\s*:?\s*(\d+)/i);
-            
-            // Extract Beneficiary Details
+           
             const beneficiaryNameMatch = text.match(/Beneficiary\s*Details[\s\S]*?Name\s*:?\s*([^\n]+)/i);
             const bankNameMatch = text.match(/Bank\s*Name\s*:?\s*([^\n]+)/i);
             const accountNoMatch = text.match(/Account\s*No\s*:?\s*([^\n]+)/i);
-            const ifscCodeMatch = text.match(/IFSC\/Bank\s*Code\s*:?\s*([^\n]+)/i);
-            const beneficiaryMobileMatch = text.match(/Beneficiary\s*Details[\s\S]*?Mobile\s*No\s*:?\s*(\d*)/i);
             
-            // Extract Payment Details
+            // IMPROVED IFSC extraction with duplicate removal
+            let ifscCode = 'N/A';
+            
+            // Extract entire IFSC line including potential duplicates
+            const ifscLineMatch = text.match(/IFSC\/Bank\s*Code\s*:?\s*([^\n]+)/i);
+            
+            if (ifscLineMatch && ifscLineMatch[1]) {
+                const ifscLine = ifscLineMatch[1].trim();
+                console.log('Raw IFSC line:', ifscLine);
+                
+                // Split by spaces and get unique values
+                const ifscParts = ifscLine.split(/\s+/).filter(part => {
+                    // Keep only alphanumeric codes between 4-15 characters
+                    return part.length >= 4 && 
+                           part.length <= 15 && 
+                           /^[A-Z0-9]+$/i.test(part) &&
+                           !['MALAYSIA', 'INDIA', 'SINGAPORE', 'MOBILE', 'PAYOUT'].includes(part.toUpperCase());
+                });
+                
+                // Get the first unique code (in case of duplicates)
+                if (ifscParts.length > 0) {
+                    ifscCode = ifscParts[0];
+                }
+            }
+            
+            // Fallback patterns if main pattern doesn't work
+            if (ifscCode === 'N/A') {
+                const ifscPattern2 = text.match(/IFSC\s*Code\s*:?\s*([A-Z0-9]{4,15})/i);
+                const ifscPattern3 = text.match(/Bank\s*Code\s*:?\s*([A-Z0-9]{4,15})/i);
+                
+                if (ifscPattern2 && ifscPattern2[1]) {
+                    ifscCode = ifscPattern2[1].trim();
+                } else if (ifscPattern3 && ifscPattern3[1]) {
+                    ifscCode = ifscPattern3[1].trim();
+                }
+            }
+            
+            console.log('IFSC Code extracted:', ifscCode);
+            
+            const beneficiaryMobileMatch = text.match(/Beneficiary\s*Details[\s\S]*?Mobile\s*No\s*:?\s*(\d*)/i);
             const payoutCountryMatch = text.match(/Payout\s*Country\s*:?\s*([^\n]+)/i);
             const sourceMatch = text.match(/Source\s*:?\s*([^\n]+)/i);
             const purposeMatch = text.match(/Purpose\s*:?\s*([^\n]+)/i);
-            
-            // Extract amounts with currency
+           
             const payoutAmountMatch = text.match(/Payout\s*Amount\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
             const exchangeRateMatch = text.match(/Exchange\s*Rate\s*:?\s*([\d.]+)\s*([A-Z]{3})/i);
             const payInAmountMatch = text.match(/Pay\s*In\s*Amount\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
             const serviceChargeMatch = text.match(/Service\s*Charge\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
             const totalAmountMatch = text.match(/Total\s*Amount\s*:?\s*([\d,]+\.?\d*)\s*([A-Z]{3})/i);
-            
+           
             const extractedData = {
                 txnNo: txnNo,
                 date: dateMatch ? dateMatch[1].trim() : 'N/A',
                 paymentChannel: paymentChannelMatch ? paymentChannelMatch[1].trim() : 'N/A',
                 pin: pinMatch ? pinMatch[1].trim() : 'N/A',
-                
-                customerId: 'N/A', // Not present in new template
+               
+                customerId: 'N/A',
                 senderName: senderNameMatch ? senderNameMatch[1].trim() : 'N/A',
                 senderAddress: senderAddress,
                 senderAddressRaw: senderAddress,
@@ -400,15 +422,15 @@
                 nationality: nationalityMatch ? nationalityMatch[1].trim() : 'N/A',
                 profession: professionMatch ? professionMatch[1].trim() : 'N/A',
                 senderMobile: senderMobileMatch ? senderMobileMatch[1].trim() : 'N/A',
-                
+               
                 beneficiaryName: beneficiaryNameMatch ? beneficiaryNameMatch[1].trim() : 'N/A',
                 bankName: bankNameMatch ? bankNameMatch[1].trim() : 'N/A',
                 accountNo: accountNoMatch ? accountNoMatch[1].trim() : 'N/A',
-                ifscCode: ifscCodeMatch ? ifscCodeMatch[1].trim() : 'N/A',
+                ifscCode: ifscCode,
                 routingNumber: 'N/A',
                 branchName: 'N/A',
                 beneficiaryMobile: beneficiaryMobileMatch && beneficiaryMobileMatch[1] ? beneficiaryMobileMatch[1].trim() : 'N/A',
-                
+               
                 payoutCountry: payoutCountryMatch ? payoutCountryMatch[1].trim() : 'N/A',
                 source: sourceMatch ? sourceMatch[1].trim() : 'N/A',
                 purpose: purposeMatch ? purposeMatch[1].trim() : 'N/A',
@@ -418,14 +440,14 @@
                 serviceCharge: serviceChargeMatch ? `${serviceChargeMatch[1].trim()} ${serviceChargeMatch[2]}` : 'N/A',
                 totalAmount: totalAmountMatch ? `${totalAmountMatch[1].trim()} ${totalAmountMatch[2]}` : 'N/A'
             };
-            
+           
             console.log('Extracted Data:', extractedData);
             return extractedData;
         }
-        
+       
         function populateReceipt(data) {
             console.log('Data passed to UI:', data);
-            
+           
             document.getElementById('txnNo').textContent = data.txnNo || 'N/A';
             document.getElementById('date').textContent = data.date || 'N/A';
             document.getElementById('paymentChannel').textContent = data.paymentChannel || 'N/A';
@@ -437,13 +459,13 @@
             document.getElementById('nationality').textContent = data.nationality || 'N/A';
             document.getElementById('profession').textContent = data.profession || 'N/A';
             document.getElementById('senderMobile').textContent = data.senderMobile || 'N/A';
-            
+           
             document.getElementById('beneficiaryName').textContent = data.beneficiaryName || 'N/A';
             document.getElementById('bankName').textContent = data.bankName || 'N/A';
             document.getElementById('accountNo').textContent = data.accountNo || 'N/A';
             document.getElementById('ifscCode').textContent = data.ifscCode || 'N/A';
             document.getElementById('beneficiaryMobile').textContent = data.beneficiaryMobile || 'N/A';
-            
+           
             document.getElementById('payoutCountry').textContent = data.payoutCountry || 'N/A';
             document.getElementById('source').textContent = data.source || 'N/A';
             document.getElementById('purpose').textContent = data.purpose || 'N/A';
@@ -452,13 +474,15 @@
             document.getElementById('payInAmount').textContent = data.payInAmount || 'N/A';
             document.getElementById('serviceCharge').textContent = data.serviceCharge || 'N/A';
             document.getElementById('totalAmount').textContent = `Total Amount: ${data.totalAmount || 'N/A'}`;
-            
+           
             document.getElementById('downloadBtn').onclick = () => downloadReceipt(data);
         }
-        
+       
         function downloadReceipt(data) {
             const amountMatch = data.payoutAmount.match(/([\d,]+\.?\d*)/);
             const amount = amountMatch ? amountMatch[1].replace(',', '') : '0';
+           
+            console.log('Passing IFSC Code to receipt:', data.ifscCode);
             
             const receiptUrl = `receipt.html?` + new URLSearchParams({
                 bankName: data.bankName || 'N/A',
@@ -466,7 +490,7 @@
                 beneficiaryName: data.beneficiaryName || 'N/A',
                 beneficiaryMobile: data.beneficiaryMobile || 'N/A',
                 senderName: data.senderName || 'N/A',
-                senderMobile: data.senderMobile || 'N/A', 
+                senderMobile: data.senderMobile || 'N/A',
                 amount: amount,
                 payInAmount: data.payInAmount || 'N/A',
                 serviceCharge: data.serviceCharge || 'N/A',
@@ -478,9 +502,11 @@
                 branchName: data.branchName || 'N/A',
                 payoutCountry: data.payoutCountry || 'N/A',
                 paymentChannel: data.paymentChannel || 'N/A',
-                pin: data.pin || 'N/A'
+                pin: data.pin || 'N/A',
+                ifscCode: data.ifscCode || 'N/A'
             }).toString();
-            
+           
+            console.log('Receipt URL:', receiptUrl);
             window.open(receiptUrl, '_blank');
         }
     </script>
